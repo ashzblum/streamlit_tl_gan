@@ -12,6 +12,61 @@ sys.path.append('src/model/pggan')
 import tl_gan.feature_axis as feature_axis
 import tfutil
 
+def main():
+    for filename in EXTERNAL_DEPENDENCIES.keys():
+        download_file(filename)
+
+    st.title("Demo of Shaobo Guan's TL-GAN")
+    session, pg_gan_model = load_pg_gan_model()
+    tl_gan_model, feature_names = load_tl_gan_model()
+
+    features = get_default_features(feature_names)
+    st.sidebar.title('Features')
+    features['Male'] = st.sidebar.slider('Male', 0, 100, 49, 5)
+    features['Smiling'] = st.sidebar.slider('Smiling', 0, 100, 49, 5)
+    features['Bald'] = st.sidebar.slider('Bald', 0, 100,49, 5)
+
+    image_out = generate_image(session, pg_gan_model, tl_gan_model, features, feature_names)
+
+    st.image(image_out, width=400)
+
+def download_file(file_path):
+    # Don't download the file twice. (If possible, verify the download using the file length.)
+    if os.path.exists(file_path):
+        if "size" not in EXTERNAL_DEPENDENCIES[file_path]:
+            return
+        elif os.path.getsize(file_path) == EXTERNAL_DEPENDENCIES[file_path]["size"]:
+            return
+
+    # These are handles to two visual elements to animate.
+    weights_warning, progress_bar = None, None
+    try:
+        weights_warning = st.warning("Downloading %s..." % file_path)
+        progress_bar = st.progress(0)
+        with open(file_path, "wb") as output_file:
+            with urllib.request.urlopen(EXTERNAL_DEPENDENCIES[file_path]["url"]) as response:
+                length = int(response.info()["Content-Length"])
+                counter = 0.0
+                MEGABYTES = 2.0 ** 20.0
+                while True:
+                    data = response.read(8192)
+                    if not data:
+                        break
+                    counter += len(data)
+                    output_file.write(data)
+
+                    # We perform animation by overwriting the elements.
+                    weights_warning.warning("Downloading %s... (%6.2f/%6.2f MB)" %
+                        (file_path, counter / MEGABYTES, length / MEGABYTES))
+                    progress_bar.progress(min(counter / length, 1.0))
+
+    # Finally, we remove these visual elements by calling .empty().
+    finally:
+        if weights_warning is not None:
+            weights_warning.empty()
+        if progress_bar is not None:
+            progress_bar.empty()
+
 @st.cache(allow_output_mutation=True)
 def load_pg_gan_model():
     """
@@ -22,10 +77,9 @@ def load_pg_gan_model():
     session = tf.Session(config=config)
 
     print('*** Load GAN Model')
-    path_model = './asset_model/karras2018iclr-celebahq-1024x1024.pkl'
 
     with session.as_default():
-        with open(path_model, 'rb') as f:
+        with open(MODEL_FILE, 'rb') as f:
             G, D, Gs = pickle.load(f)
     return session, G
 
@@ -36,11 +90,11 @@ def load_tl_gan_model():
     to the GAN's latent space.
     """
     print('*** Load TL-GAN Model')
-    path_feature_direction = './asset_results/pg_gan_celeba_feature_direction_40'
+    path_feature_direction = '.'
     pathfile_feature_direction = \
         glob.glob(os.path.join(path_feature_direction, 'feature_direction_*.pkl'))[-1]
 
-    with open(pathfile_feature_direction, 'rb') as f:
+    with open(FEATURE_DIRECTION_FILE, 'rb') as f:
         feature_direction_name = pickle.load(f)
 
     feature_direction = feature_direction_name['direction']
@@ -90,17 +144,19 @@ def convert_features_to_latent_variables(tl_gan_model, features, feature_names):
     latents = np.dot(tl_gan_model, feature_values)
     return latents
 
+EXTERNAL_DEPENDENCIES = {
+    "feature_direction_2018102_044444.pkl" : {
+        "url": "https://www.dropbox.com/sh/y1ryg8iq1erfcsr/AADZVwMYXdX88cyBDkx85WdHa/asset_results/pg_gan_celeba_feature_direction_40/feature_direction_20181002_044444.pkl?dl=1",
+        "size": 164742
+    },
+    "karras2018iclr-celebahq-1024x1024.pkl": {
+        "url": "https://drive.google.com/open?id=188K19ucknC6wg1R6jbuPEhTq9zoufOx4",
+        "size": 277043647
+    }
+}
 
-st.title("Demo of Shaobo's GAN")
+FEATURE_DIRECTION_FILE = EXTERNAL_DEPENDENCI1GES.keys()[0]
+MODEL_FILE = EXTERNAL_DEPENDENCIES.keys()[1]
 
-session, pg_gan_model = load_pg_gan_model()
-tl_gan_model, feature_names = load_tl_gan_model()
-
-features = get_default_features(feature_names)
-features['Male'] = st.slider('Male', 0, 100, 49, 5)
-features['Smiling'] = st.slider('Smiling', 0, 100, 49, 5)
-features['Bald'] = st.slider('Bald', 0, 100,49, 5)
-
-image_out = generate_image(session, pg_gan_model, tl_gan_model, features, feature_names)
-
-st.image(image_out, width=400)
+if __name__ == "__main__":
+    main()
