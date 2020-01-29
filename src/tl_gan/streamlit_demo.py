@@ -6,6 +6,7 @@ import streamlit as st
 import sys
 import tensorflow as tf
 import PIL
+import urllib
 
 sys.path.append('src')
 sys.path.append('src/model/pggan')
@@ -24,7 +25,7 @@ def main():
     st.sidebar.title('Features')
     features['Male'] = st.sidebar.slider('Male', 0, 100, 49, 5)
     features['Smiling'] = st.sidebar.slider('Smiling', 0, 100, 49, 5)
-    features['Bald'] = st.sidebar.slider('Bald', 0, 100,49, 5)
+    features['Bald'] = st.sidebar.slider('Bald', 0, 100, 49, 5)
 
     image_out = generate_image(session, pg_gan_model, tl_gan_model, features, feature_names)
 
@@ -144,19 +145,19 @@ def convert_features_to_latent_variables(tl_gan_model, features, feature_names):
     latents = np.dot(tl_gan_model, feature_values)
     return latents
 
+FEATURE_DIRECTION_FILE = "feature_direction_2018102_044444.pkl"
+MODEL_FILE = "karras2018iclr-celebahq-1024x1024.pkl"
 EXTERNAL_DEPENDENCIES = {
     "feature_direction_2018102_044444.pkl" : {
         "url": "https://www.dropbox.com/sh/y1ryg8iq1erfcsr/AADZVwMYXdX88cyBDkx85WdHa/asset_results/pg_gan_celeba_feature_direction_40/feature_direction_20181002_044444.pkl?dl=1",
         "size": 164742
     },
     "karras2018iclr-celebahq-1024x1024.pkl": {
-        "url": "https://drive.google.com/open?id=188K19ucknC6wg1R6jbuPEhTq9zoufOx4",
+#        "url": "https://drive.google.com/open?id=188K19ucknC6wg1R6jbuPEhTq9zoufOx4",
+        "url": "https://www.dropbox.com/sh/y1ryg8iq1erfcsr/AAAlnHPttDYNjau_6xIIkR0Na/asset_model/karras2018iclr-celebahq-1024x1024.pkl?dl=1",
         "size": 277043647
     }
 }
-
-FEATURE_DIRECTION_FILE = EXTERNAL_DEPENDENCI1GES.keys()[0]
-MODEL_FILE = EXTERNAL_DEPENDENCIES.keys()[1]
 
 if __name__ == "__main__":
     main()
