@@ -158,7 +158,7 @@ EXTERNAL_DEPENDENCIES = {
     },
     "karras2018iclr-celebahq-1024x1024.pkl": {
 #        "url": "https://drive.google.com/open?id=188K19ucknC6wg1R6jbuPEhTq9zoufOx4",
-        "url": "https://www.dropbox.com/sh/y1ryg8iq1erfcsr/AAAlnHPttDYNjau_6xIIkR0Na/asset_model/karras2018iclr-celebahq-1024x1024.pkl?dl=1",
+        "url": "https://streamlit-demo-data.s3-us-west-2.amazonaws.com/facegan/karras2018iclr-celebahq-1024x1024.pkl",
         "size": 277043647
     }
 }
