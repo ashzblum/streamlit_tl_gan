@@ -23,9 +23,13 @@ def main():
 
     features = get_default_features(feature_names)
     st.sidebar.title('Features')
-    features['Male'] = st.sidebar.slider('Male', 0, 100, 49, 5)
-    features['Smiling'] = st.sidebar.slider('Smiling', 0, 100, 49, 5)
-    features['Bald'] = st.sidebar.slider('Bald', 0, 100, 49, 5)
+#    features['Age'] = st.sidebar.slider('Age', 0, 100, 50, 1)
+#    features['Male'] = st.sidebar.slider('Male', 0, 100, 49, 1)
+#    features['Smiling'] = st.sidebar.slider('Smiling', 0, 100, 49, 1)
+#    features['Bald'] = st.sidebar.slider('Bald', 0, 100, 49, 1)
+    control_features = st.sidebar.multiselect('Which features to control?', sorted(features), ['Young','Smiling','Male'])
+    for feature in control_features:
+        features[feature] = st.sidebar.slider(feature, 0, 100, 50, 1)
 
     image_out = generate_image(session, pg_gan_model, tl_gan_model, features, feature_names)
 
