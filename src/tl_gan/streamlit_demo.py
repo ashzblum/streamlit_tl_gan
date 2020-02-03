@@ -7,6 +7,7 @@ import sys
 import tensorflow as tf
 import PIL
 import urllib
+import random
 
 sys.path.append('src')
 sys.path.append('src/model/pggan')
@@ -17,19 +18,18 @@ def main():
     for filename in EXTERNAL_DEPENDENCIES.keys():
         download_file(filename)
 
-    st.title("Demo of Shaobo Guan's TL-GAN")
+    st.title("Streamlit TL-GAN Demo")
     session, pg_gan_model = load_pg_gan_model()
     tl_gan_model, feature_names = load_tl_gan_model()
 
-    features = get_default_features(feature_names)
+    features = get_random_features(feature_names)
     st.sidebar.title('Features')
-#    features['Age'] = st.sidebar.slider('Age', 0, 100, 50, 1)
+#    features['Young'] = st.sidebar.slider('Young', 0, 100, 50, 1)
 #    features['Male'] = st.sidebar.slider('Male', 0, 100, 49, 1)
 #    features['Smiling'] = st.sidebar.slider('Smiling', 0, 100, 49, 1)
-#    features['Bald'] = st.sidebar.slider('Bald', 0, 100, 49, 1)
     control_features = st.sidebar.multiselect('Which features to control?', sorted(features), ['Young','Smiling','Male'])
     for feature in control_features:
-        features[feature] = st.sidebar.slider(feature, 0, 100, 50, 1)
+        features[feature] = st.sidebar.slider(feature, 0, 100, 50, 5)
 
     image_out = generate_image(session, pg_gan_model, tl_gan_model, features, feature_names)
 
@@ -86,7 +86,7 @@ def load_pg_gan_model():
     with session.as_default():
         with open(MODEL_FILE, 'rb') as f:
             G, D, Gs = pickle.load(f)
-    return session, G
+    return session, Gs
 
 @st.cache
 def load_tl_gan_model():
@@ -112,12 +112,13 @@ def load_tl_gan_model():
             idx_base=np.flatnonzero(feature_lock_status))
     return feature_direction_disentangled, feature_names
 
-def get_default_features(feature_names):
+@st.cache(allow_output_mutation=True)
+def get_random_features(feature_names):
     """
-    Return a default dictionary from feature names to feature 
-    values. The features are defined on the range [0,100].
+    Return a random dictionary from feature names to feature 
+    values within the range [40,60] (out of [0,100]).
     """
-    features = dict((name, 49) for name in feature_names)
+    features = dict((name, 40+random.randint(0,20)) for name in feature_names)
     return features
 
 @st.cache(hash_funcs={tf.Session : id, tfutil.Network : id}, show_spinner=False)
