@@ -7,7 +7,6 @@ import sys
 import tensorflow as tf
 import PIL
 import urllib
-import random
 
 sys.path.append('src')
 sys.path.append('src/model/pggan')
@@ -18,20 +17,18 @@ def main():
     for filename in EXTERNAL_DEPENDENCIES.keys():
         download_file(filename)
 
-    st.title("Streamlit TL-GAN Demo")
+    st.title("Streamlit Face-GAN Demo")
     session, pg_gan_model = load_pg_gan_model()
     tl_gan_model, feature_names = load_tl_gan_model()
 
     features = get_random_features(feature_names)
     st.sidebar.title('Features')
-#    features['Young'] = st.sidebar.slider('Young', 0, 100, 50, 1)
-#    features['Male'] = st.sidebar.slider('Male', 0, 100, 49, 1)
-#    features['Smiling'] = st.sidebar.slider('Smiling', 0, 100, 49, 1)
-    control_features = st.sidebar.multiselect('Which features to control?', sorted(features), ['Young','Smiling','Male'])
-    for feature in control_features:
-        features[feature] = st.sidebar.slider(feature, 0, 100, 50, 5)
+    features['Young'] = st.sidebar.slider('Young', 0, 100, 50, 5)
+    features['Male'] = st.sidebar.slider('Male', 0, 100, 50, 5)
+    features['Smiling'] = st.sidebar.slider('Smiling', 0, 100, 50, 5)
 
-    image_out = generate_image(session, pg_gan_model, tl_gan_model, features, feature_names)
+    image_out = generate_image(session, pg_gan_model, tl_gan_model,
+            features, feature_names)
 
     st.image(image_out, width=400)
 
@@ -77,11 +74,8 @@ def load_pg_gan_model():
     """
     Create the tensorflow session.
     """
-    print('*** Create TF Session')
     config = tf.ConfigProto(allow_soft_placement=True)
     session = tf.Session(config=config)
-
-    print('*** Load GAN Model')
 
     with session.as_default():
         with open(MODEL_FILE, 'rb') as f:
@@ -94,11 +88,6 @@ def load_tl_gan_model():
     Load the linear model (matrix) which maps the feature space
     to the GAN's latent space.
     """
-    print('*** Load TL-GAN Model')
-    path_feature_direction = '.'
-    pathfile_feature_direction = \
-        glob.glob(os.path.join(path_feature_direction, 'feature_direction_*.pkl'))[-1]
-
     with open(FEATURE_DIRECTION_FILE, 'rb') as f:
         feature_direction_name = pickle.load(f)
 
@@ -115,10 +104,10 @@ def load_tl_gan_model():
 @st.cache(allow_output_mutation=True)
 def get_random_features(feature_names):
     """
-    Return a random dictionary from feature names to feature 
+    Return a random dictionary from feature names to feature
     values within the range [40,60] (out of [0,100]).
     """
-    features = dict((name, 40+random.randint(0,20)) for name in feature_names)
+    features = dict((name, 40+np.random.randint(0,21)) for name in feature_names)
     return features
 
 @st.cache(hash_funcs={tf.Session : id, tfutil.Network : id}, show_spinner=False)
@@ -126,29 +115,21 @@ def generate_image(session, pg_gan_model, tl_gan_model, features, feature_names)
     """
     Converts a feature vector into an image.
     """
-    latents = convert_features_to_latent_variables(tl_gan_model, features, feature_names)
+    # Create rescaled feature vector
+    feature_values = np.array([features[name] for name in feature_names])
+    feature_values = (feature_values - 50) / 250
+    # Multiply by Shaobo's matrix to get the latent variables
+    latents = np.dot(tl_gan_model, feature_values)
     latents = latents.reshape(1, -1)
     dummies = np.zeros([1] + pg_gan_model.input_shapes[1][1:])
+    # Feed the latent vector to the GAN in TensorFlow
     with session.as_default():
         images = pg_gan_model.run(latents, dummies)
-    images = np.clip(np.rint((images + 1.0) / 2.0 * 255.0), 0.0, 255.0).astype(np.uint8)  # [-1,1] => [0,255]
+    # Rescale and reorient the GAN's output to make an image
+    images = np.clip(np.rint((images + 1.0) / 2.0 * 255.0),
+                              0.0, 255.0).astype(np.uint8)  # [-1,1] => [0,255]
     images = images.transpose(0, 2, 3, 1)  # NCHW => NHWC
     return images[0]
-
-@st.cache(hash_funcs={tfutil.Network : id})
-def convert_features_to_latent_variables(tl_gan_model, features, feature_names):
-    """Uses Shaobo's model to convert the feature vector
-    (a dictionary from feature names to values) into
-    a numpy array consisting of the latent variables."""
-    # convert the features from a dict to an array
-    feature_values = np.array([features[name] for name in feature_names])
-
-    # renormalize from [0,100] -> [-0.2, 0.2]
-    feature_values = (feature_values - 50) / 250
-
-    # muliply by shaobo's matrix to get the latent variables
-    latents = np.dot(tl_gan_model, feature_values)
-    return latents
 
 FEATURE_DIRECTION_FILE = "feature_direction_2018102_044444.pkl"
 MODEL_FILE = "karras2018iclr-celebahq-1024x1024.pkl"
