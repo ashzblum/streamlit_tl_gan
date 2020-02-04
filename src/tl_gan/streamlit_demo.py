@@ -144,7 +144,7 @@ def convert_features_to_latent_variables(tl_gan_model, features, feature_names):
     feature_values = np.array([features[name] for name in feature_names])
 
     # renormalize from [0,100] -> [-0.2, 0.2]
-    feature_values = (feature_values - 50) / 1000
+    feature_values = (feature_values - 50) / 250
 
     # muliply by shaobo's matrix to get the latent variables
     latents = np.dot(tl_gan_model, feature_values)
